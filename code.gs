@@ -41,15 +41,22 @@ function saveData(formData) {
             'endTime',
             'Task',
             'Notes',
-            'accomplishments',
-            'challenges',
-            'Plan/Next Step',
+            'Accomplishments',
+            'Challenges',
+            'nextSteps',
             'additionalNotes',
         ]);
     }
 
+    // จัดรูปแบบวันที่ให้เป็น yyyy-mm-dd
+    var formattedDate = Utilities.formatDate(
+        date,
+        Session.getScriptTimeZone(),
+        'yyyy-MM-dd'
+    );
+
     sheet.appendRow([
-        formData.date,
+        formattedDate,
         formData.name,
         formData.department,
         formData.startTime,
@@ -58,7 +65,7 @@ function saveData(formData) {
         formData.notes,
         formData.accomplishments,
         formData.challenges,
-        formData.plan,
+        formData.nextStep,
         formData.additionalNotes,
     ]);
 }
@@ -108,12 +115,29 @@ function getReports(month, year, name) {
 
                 for (var j = 1; j < data.length; j++) {
                     var row = data[j];
-                    var report = {};
+                    var report = {
+                        sheetName: sheetName, // เพิ่ม sheetName
+                        rowNumber: j + 1, // เพิ่ม rowNumber (ฐาน 1)
+                    };
 
                     for (var k = 0; k < headers.length; k++) {
-                        report[headers[k]] = row[k]
-                            ? row[k].toString().trim()
-                            : '';
+                        var header = headers[k];
+                        var value = row[k];
+
+                        // แปลงเวลาให้ถูกต้อง
+                        if (
+                            (header === 'starttime' || header === 'endtime') &&
+                            typeof value === 'number'
+                        ) {
+                            var date = new Date(value * 24 * 60 * 60 * 1000);
+                            value = Utilities.formatDate(
+                                date,
+                                Session.getScriptTimeZone(),
+                                'HH:mm'
+                            );
+                        }
+
+                        report[header] = value ? value.toString().trim() : '';
                     }
 
                     var nameMatch =
@@ -129,6 +153,7 @@ function getReports(month, year, name) {
         }
     }
 
+    // เรียงลำดับตามวันที่ (ใหม่ไปเก่า)
     allReports.sort(function (a, b) {
         return new Date(b.date) - new Date(a.date);
     });
@@ -291,58 +316,73 @@ function updateReport(sheetName, rowNumber, updatedData) {
         var sheet = ss.getSheetByName(sheetName);
 
         if (!sheet) throw new Error('Sheet not found: ' + sheetName);
+        if (rowNumber > sheet.getLastRow() || rowNumber < 2) {
+            throw new Error('Invalid row number for update: ' + rowNumber);
+        }
 
         var headers = sheet
             .getRange(1, 1, 1, sheet.getLastColumn())
             .getValues()[0];
         var rowData = [];
 
-        // ตรวจสอบว่าแถวที่ต้องการอัพเดทมีอยู่จริง
-        if (rowNumber > sheet.getLastRow() || rowNumber < 2) {
-            throw new Error('Invalid row number for update');
-        }
+        // จัดรูปแบบวันที่ใหม่
+        var dateObj = new Date(updatedData.date);
+        var formattedDate = Utilities.formatDate(
+            dateObj,
+            Session.getScriptTimeZone(),
+            'yyyy-MM-dd'
+        );
 
-        // เตรียมข้อมูลสำหรับอัพเดทตามโครงสร้างหัวตาราง
+        // อ่านค่าเดิมจากแถวที่ต้องการอัพเดท
+        var originalData = sheet
+            .getRange(rowNumber, 1, 1, headers.length)
+            .getValues()[0];
+
+        // เตรียมข้อมูลสำหรับอัพเดท
         for (var i = 0; i < headers.length; i++) {
             var header = headers[i].toString().toLowerCase().trim();
-            var value = '';
+            var value = originalData[i]; // เริ่มจากค่าเดิม
 
             switch (header) {
                 case 'date':
-                    value = updatedData.date || '';
+                    value = formattedDate;
                     break;
                 case 'name':
-                    value = updatedData.name || '';
+                    value = updatedData.name || value;
                     break;
                 case 'department':
-                    value = updatedData.department || '';
+                    value = updatedData.department || value;
                     break;
                 case 'starttime':
-                    value = updatedData.startTime || '';
+                    value =
+                        updatedData.startTime !== undefined
+                            ? updatedData.startTime
+                            : value;
                     break;
                 case 'endtime':
-                    value = updatedData.endTime || '';
+                    value =
+                        updatedData.endTime !== undefined
+                            ? updatedData.endTime
+                            : value;
                     break;
                 case 'task':
-                    value = updatedData.task || '';
+                    value = updatedData.task || value;
                     break;
                 case 'notes':
-                    value = updatedData.notes || '';
+                    value = updatedData.notes || value;
                     break;
                 case 'accomplishments':
-                    value = updatedData.accomplishments || '';
+                    value = updatedData.accomplishments || value;
                     break;
                 case 'challenges':
-                    value = updatedData.challenges || '';
+                    value = updatedData.challenges || value;
                     break;
-                case 'plan/next step':
-                    value = updatedData.plan || '';
+                case 'nextSteps':
+                    value = updatedData.nextSteps || value;
                     break;
                 case 'additionalnotes':
-                    value = updatedData.additionalNotes || '';
+                    value = updatedData.additionalNotes || value;
                     break;
-                default:
-                    value = '';
             }
 
             rowData.push(value);
@@ -353,6 +393,29 @@ function updateReport(sheetName, rowNumber, updatedData) {
         return true;
     } catch (e) {
         console.error('Error in updateReport:', e);
+        throw e;
+    }
+}
+
+function deleteReport(sheetName, rowNumber) {
+    try {
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var sheet = ss.getSheetByName(sheetName);
+
+        if (!sheet) {
+            throw new Error('Sheet not found: ' + sheetName);
+        }
+
+        // ตรวจสอบว่าแถวที่ต้องการลบมีอยู่จริง
+        if (rowNumber < 2 || rowNumber > sheet.getLastRow()) {
+            throw new Error('Invalid row number for deletion: ' + rowNumber);
+        }
+
+        // ลบแถว
+        sheet.deleteRow(rowNumber);
+        return true;
+    } catch (e) {
+        console.error('Error in deleteReport:', e);
         throw e;
     }
 }

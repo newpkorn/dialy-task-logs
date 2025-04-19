@@ -37,21 +37,21 @@
   }
 
   function submitForm() {
-    const dateInput = document.getElementById("date").value;
+    const dateInput = document.getElementById('date').value;
     const formattedDate = formatDateForSheet(dateInput);
 
     var formData = {
       date: formattedDate,
-      name: document.getElementById("name").value,
-      department: document.getElementById("department").value,
-      startTime: document.getElementById("startTime").value,
-      endTime: document.getElementById("endTime").value,
-      task: document.getElementById("task").value,
-      notes: document.getElementById("notes").value,
-      accomplishments: document.getElementById("accomplishments").value,
-      challenges: document.getElementById("challenges").value,
-      plan: document.getElementById("plan").value,
-      additionalNotes: document.getElementById("additionalNotes").value
+      name: document.getElementById('name').value,
+      department: document.getElementById('department').value,
+      startTime: document.getElementById('startTime').value,
+      endTime: document.getElementById('endTime').value,
+      task: document.getElementById('task').value,
+      notes: document.getElementById('notes').value,
+      accomplishments: document.getElementById('accomplishments').value,
+      challenges: document.getElementById('challenges').value,
+      nextSteps: document.getElementById('plan').value,
+      additionalNotes: document.getElementById('additionalNotes').value,
     };
 
     if (!formData.name) {
@@ -61,8 +61,8 @@
         text: 'Please enter your name',
         confirmButtonText: 'OK',
         customClass: {
-          popup: 'custom-swal-popup'
-        }
+          popup: 'custom-swal-popup',
+        },
       });
       return;
     }
@@ -73,14 +73,14 @@
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading(),
       customClass: {
-        popup: 'custom-swal-popup'
-      }
+        popup: 'custom-swal-popup',
+      },
     });
 
     google.script.run
       .withSuccessHandler(function () {
         Swal.close();
-        document.getElementById("workLogForm").reset();
+        document.getElementById('workLogForm').reset();
         setDefaultDateTime();
 
         Swal.fire({
@@ -91,15 +91,13 @@
           timer: 2000,
           timerProgressBar: true,
           customClass: {
-            popup: 'custom-swal-popup'
+            popup: 'custom-swal-popup',
           },
         }).then((result) => {
-          if (result.isConfirmed || result.dismiss === Swal.DismissReason.timer) {
-            window.scrollTo({
-              top: 0,
-              behavior: 'smooth'
-            });
-          }
+          // window.scrollTo({
+          //   top: 0,
+          //   behavior: 'smooth',
+          // });
           initializeReportFilters();
         });
       })
@@ -110,15 +108,15 @@
           text: error.message,
           confirmButtonText: 'Close',
           customClass: {
-            popup: 'custom-swal-popup'
+            popup: 'custom-swal-popup',
           },
           willClose: () => {
             // เมื่อกำลังจะปิด modal ให้เลื่อนขึ้นด้านบน
             window.scrollTo({
               top: 0,
-              behavior: 'smooth'
+              behavior: 'smooth',
             });
-          }
+          },
         });
       })
       .saveData(formData);
@@ -253,11 +251,39 @@
       .getSpreadsheetUrl();
   }
 
+  function formatTimeForInput(timeValue) {
+    if (!timeValue && timeValue !== 0) return '';
+
+    if (typeof timeValue === 'string') {
+      if (timeValue.includes(':')) {
+        const parts = timeValue.split(':');
+        return `${parts[0].padStart(2, '0')}:${parts[1] || '00'}`;
+      }
+      return '';
+    }
+
+    if (typeof timeValue === 'number') {
+      const totalMinutes = Math.round(timeValue * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+      const minutes = (totalMinutes % 60).toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+
+    return '';
+  }
+
   function editReport(index) {
     const report = currentReports[index];
 
-    console.log("editReport", index, report);
+    if (!report) {
+      console.error('No report found at index:', index);
+      Swal.fire('Error', 'Report not found', 'error');
+      return;
+    }
 
+    console.log('report:', report);
+
+    // ฟังก์ชันสำหรับจัดรูปแบบเวลา
     const formatTimeForInput = (timeValue) => {
       if (!timeValue && timeValue !== 0) return '';
 
@@ -282,51 +308,53 @@
     Swal.fire({
       title: 'Edit Report',
       html: `
-        <div class="form-group">
-          <label>Date:</label>
-          <input type="text" class="swal2-input" value="${formatReportDate(report.date)}" disabled>
-        </div>
-        <div class="form-group">
-          <label for="edit-name">Name:</label>
-          <input type="text" id="edit-name" class="swal2-input" value="${report.name || ''}">
-        </div>
-        <div class="form-group">
-          <label for="edit-department">Department:</label>
-          <input type="text" id="edit-department" class="swal2-input" value="${report.department || ''}">
-        </div>
-        <div class="form-group">
-          <label for="edit-startTime">Start Time:</label>
-          <input type="time" id="edit-startTime" class="swal2-input" value="${formatTimeForInput(report.starttime)}">
-        </div>
-        <div class="form-group">
-          <label for="edit-endTime">End Time:</label>
-          <input type="time" id="edit-endTime" class="swal2-input" value="${formatTimeForInput(report.endtime)}">
-        </div>
-        <div class="form-group">
-          <label for="edit-task">Task/Activity:</label>
-          <textarea id="edit-task" class="swal2-textarea">${report.task || ''}</textarea>
-        </div>
-        <div class="form-group">
-          <label for="edit-notes">Notes/Progress/Challenges:</label>
-          <textarea id="edit-notes" class="swal2-textarea">${report.notes || ''}</textarea>
-        </div>
-        <div class="form-group">
-          <label for="edit-accomplishments">Key Accomplishments:</label>
-          <textarea id="edit-accomplishments" class="swal2-textarea">${report.accomplishments || ''}</textarea>
-        </div>
-        <div class="form-group">
-          <label for="edit-challenges">Challenges/Roadblocks:</label>
-          <textarea id="edit-challenges" class="swal2-textarea">${report.challenges || ''}</textarea>
-        </div>
-        <div class="form-group">
-          <label for="edit-plan">Plan for Tomorrow/Next Steps:</label>
-          <textarea id="edit-plan" class="swal2-textarea">${report.plan || ''}</textarea>
-        </div>
-        <div class="form-group">
-          <label for="edit-additionalNotes">Additional Notes:</label>
-          <textarea id="edit-additionalNotes" class="swal2-textarea">${report.additionalnotes || ''}</textarea>
-        </div>
-      `,
+      <div class="form-group">
+        <label>Date:</label>
+        <input type="text" class="swal2-input" value="${formatReportDate(report.date)}" disabled>
+      </div>
+      <div class="form-group">
+        <label for="edit-name">Name:</label>
+        <input type="text" id="edit-name" class="swal2-input" value="${report.name || ''}">
+      </div>
+      <div class="form-group">
+        <label for="edit-department">Department:</label>
+        <input type="text" id="edit-department" class="swal2-input" value="${report.department || ''}">
+      </div>
+      <div class="form-group">
+        <label for="edit-startTime">Start Time:</label>
+        <input type="time" id="edit-startTime" class="swal2-input" value="${report.starttime}  || ''">
+      </div>
+      <div class="form-group">
+        <label for="edit-endTime">End Time:</label>
+        <input type="time" id="edit-endTime" class="swal2-input" value="${report.endtime}  || ''">
+      </div>
+      <div class="form-group">
+        <label for="edit-task">Task/Activity:</label>
+        <textarea id="edit-task" class="swal2-textarea">${report.task || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-notes">Notes/Progress/Challenges:</label>
+        <textarea id="edit-notes" class="swal2-textarea">${report.notes || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-accomplishments">Key Accomplishments:</label>
+        <textarea id="edit-accomplishments" class="swal2-textarea">${report.accomplishments || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-challenges">Challenges/Roadblocks:</label>
+        <textarea id="edit-challenges" class="swal2-textarea">${report.challenges || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-plan">Plan for Tomorrow/Next Steps:</label>
+        <textarea id="edit-plan" class="swal2-textarea">${report.nextsteps || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-additionalNotes">Additional Notes:</label>
+        <textarea id="edit-additionalNotes" class="swal2-textarea">${report.additionalnotes || ''}</textarea>
+      </div>
+      <input type="hidden" id="edit-sheetName" value="${report.sheetName || ''}">
+      <input type="hidden" id="edit-rowNumber" value="${report.rowNumber || ''}">
+    `,
       width: '700px',
       focusConfirm: false,
       showCancelButton: true,
@@ -343,7 +371,9 @@
       },
       preConfirm: () => {
         return {
-          date: report.date,
+          sheetName: document.getElementById('edit-sheetName').value,
+          rowNumber: parseInt(document.getElementById('edit-rowNumber').value),
+          date: report.date, // ใช้ date เดิมจาก report
           name: document.getElementById('edit-name').value,
           department: document.getElementById('edit-department').value,
           startTime: document.getElementById('edit-startTime').value,
@@ -352,66 +382,52 @@
           notes: document.getElementById('edit-notes').value,
           accomplishments: document.getElementById('edit-accomplishments').value,
           challenges: document.getElementById('edit-challenges').value,
-          plan: document.getElementById('edit-plan').value,
+          nextSteps: document.getElementById('edit-plan').value,
           additionalNotes: document.getElementById('edit-additionalNotes').value
         };
-      },
-      didOpen: () => {
-        const startTimeEl = document.getElementById('edit-startTime');
-        const endTimeEl = document.getElementById('edit-endTime');
-
-        if (startTimeEl) {
-          const formattedTime = formatTimeForInput(report.starttime);
-          if (formattedTime) startTimeEl.value = formattedTime;
-        }
-        if (endTimeEl) {
-          const formattedTime = formatTimeForInput(report.endtime);
-          if (formattedTime) endTimeEl.value = formattedTime;
-        }
       }
     }).then((result) => {
       if (result.isConfirmed) {
         const updatedData = result.value;
-        const dateObj = new Date(report.date);
-        const month = dateObj.getMonth();
-        const year = dateObj.getFullYear();
 
-        Swal.fire({ title: 'Updating...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        Swal.fire({
+          title: 'Updating...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
 
         google.script.run
-          .withSuccessHandler(function (reportInfo) {
-            console.log('reportInfo', reportInfo);
-            if (!reportInfo) {
-              Swal.fire('Error', 'Report not found in sheet', 'error');
-              return;
-            }
-
-            // ตรวจสอบว่าเป็นแถวเดียวกันกับที่เลือก
-            if (reportInfo.rowNumber <= 1) {
-              Swal.fire('Error', 'Invalid row number for update', 'error');
-              return;
-            }
-
-            // อัพเดทข้อมูล
-            google.script.run
-              .withSuccessHandler(function () {
-                Swal.fire('Success', 'Report updated successfully', 'success')
-                  .then(() => loadReports());
-              })
-              .withFailureHandler(function (error) {
-                Swal.fire('Error', error.message, 'error');
-              })
-              .updateReport(reportInfo.sheetName, reportInfo.rowNumber, updatedData);
+          .withSuccessHandler(() => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Success!',
+              text: 'Report updated successfully',
+              timer: 2000
+            }).then(() => loadReports());
           })
-          .withFailureHandler(function (error) {
-            Swal.fire('Error', error.message, 'error');
+          .withFailureHandler((error) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error!',
+              text: error.message
+            });
           })
-          .getReportById(month, year, report.name, report.date); // ใช้ report.date เดิม
+          .updateReport(
+            updatedData.sheetName,
+            updatedData.rowNumber,
+            updatedData
+          );
       }
     });
   }
   function deleteReport(index) {
     const report = currentReports[index];
+
+    // ตรวจสอบว่ามีข้อมูล report จริงๆ
+    if (!report) {
+      console.error('No report found at index:', index);
+      return;
+    }
 
     Swal.fire({
       title: 'Are you sure?',
@@ -423,51 +439,28 @@
       confirmButtonText: 'Yes, delete it!',
     }).then((result) => {
       if (result.isConfirmed) {
-        const dateObj = new Date(report.date);
-        const month = dateObj.getMonth();
-        const year = dateObj.getFullYear();
-
         Swal.fire({
           title: 'Deleting...',
           allowOutsideClick: false,
           didOpen: () => Swal.showLoading(),
         });
 
+        // ใช้ sheetName และ rowNumber จาก report โดยตรง
         google.script.run
-          .withSuccessHandler(function (reportInfo) {
-            if (!reportInfo) {
-              Swal.fire(
-                'Error',
-                'Report not found in sheet',
-                'error'
-              );
-              return;
-            }
-
-            google.script.run
-              .withSuccessHandler(function () {
-                Swal.fire(
-                  'Deleted!',
-                  'Report has been deleted.',
-                  'success'
-                ).then(() => loadReports());
-              })
-              .withFailureHandler(function (error) {
-                Swal.fire('Error', error.message, 'error');
-              })
-              .deleteReport(
-                reportInfo.sheetName,
-                reportInfo.rowNumber
-              );
+          .withSuccessHandler(() => {
+            Swal.fire(
+              'Deleted!',
+              'Report has been deleted.',
+              'success'
+            ).then(() => loadReports());
           })
-          .withFailureHandler(function (error) {
+          .withFailureHandler((error) => {
             Swal.fire('Error', error.message, 'error');
           })
-          .getReportById(month, year, report.name, report.date);
+          .deleteReport(report.sheetName, report.rowNumber);
       }
     });
   }
-
   function formatReportDate(dateString) {
     if (!dateString) return '';
     try {
