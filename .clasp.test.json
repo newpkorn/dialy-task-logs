@@ -1,0 +1,13 @@
+//  Rename this file to .clasp.json to use it with clasp
+//  This file is used to configure clasp for Google Apps Script projects.
+//  For more information, see: https://github.com/googleworkspace/clasp
+
+{
+    "scriptId": "The script ID of the Apps Script project",
+    "rootDir": "",
+    "scriptExtensions": [".js", ".gs"],
+    "htmlExtensions": [".html"],
+    "jsonExtensions": [".json"],
+    "filePushOrder": [],
+    "skipSubdirectories": false
+}
