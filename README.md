@@ -140,10 +140,6 @@ You can customize the following in `code.gs`:
 
 ## 🔧 Troubleshooting
 
--   **Authorization issues**: Click "Review Permissions"
--   **Data not saving**: Verify script is bound to correct sheet
--   **UI issues**: Clear browser cache and reload
-
 ```
 | Issue                   | Solution                                              |
 |-------------------------|-------------------------------------------------------|
@@ -151,8 +147,6 @@ You can customize the following in `code.gs`:
 | Data not saving         | Verify the script is bound to the correct spreadsheet |
 | UI not loading properly | Clear browser cache and reload the app                |
 ```
-
-## 📝 Credits
 
 ---
 
