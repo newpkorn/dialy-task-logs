@@ -158,7 +158,3 @@ You can customize the following in `code.gs`:
 
 Developed by pakorn
 [![GitHub](https://img.shields.io/badge/GitHub-Profile-blue?style=flat&logo=github)](https://github.com/newpkorn)
-
-```
-
-```
