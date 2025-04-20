@@ -10,64 +10,79 @@ function include(filename) {
 }
 
 function saveData(formData) {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var date = new Date(formData.date);
-    var year = date.getFullYear();
-    var month = date.getMonth();
-    var monthNames = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-    ];
-    var sheetName = monthNames[month] + ' ' + year;
-    var sheet = ss.getSheetByName(sheetName);
+    try {
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    if (!sheet) {
-        sheet = ss.insertSheet(sheetName);
+        // รับวันที่ในรูปแบบ YYYY-MM-DD โดยตรง
+        var dateParts = formData.date.split('-');
+        var date = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+
+        // ตรวจสอบว่าวันที่ถูกต้อง
+        if (isNaN(date.getTime())) {
+            throw new Error(
+                'Invalid date format. Expected YYYY-MM-DD but got ' +
+                    formData.date
+            );
+        }
+
+        var year = date.getFullYear();
+        var month = date.getMonth();
+        var monthNames = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December',
+        ];
+        var sheetName = monthNames[month] + ' ' + year;
+
+        console.log('Creating/accessing sheet:', sheetName); // สำหรับ debug
+
+        var sheet = ss.getSheetByName(sheetName);
+        if (!sheet) {
+            sheet = ss.insertSheet(sheetName);
+            sheet.appendRow([
+                'Date',
+                'Name',
+                'Department',
+                'startTime',
+                'endTime',
+                'Task',
+                'Notes',
+                'Accomplishments',
+                'Challenges',
+                'Plan/Next Steps',
+                'additionalNotes',
+            ]);
+        }
+
+        // ใช้รูปแบบวันที่เดิม (YYYY-MM-DD) สำหรับบันทึกลง Sheets
         sheet.appendRow([
-            'Date',
-            'Name',
-            'Department',
-            'startTime',
-            'endTime',
-            'Task',
-            'Notes',
-            'Accomplishments',
-            'Challenges',
-            'nextSteps',
-            'additionalNotes',
+            formData.date, // ใช้รูปแบบเดิมที่รับมา
+            formData.name,
+            formData.department,
+            formData.startTime,
+            formData.endTime,
+            formData.task,
+            formData.notes,
+            formData.accomplishments,
+            formData.challenges,
+            formData.plan,
+            formData.additionalNotes,
         ]);
+
+        return true;
+    } catch (e) {
+        console.error('Error in saveData:', e);
+        throw new Error('Failed to save data: ' + e.message);
     }
-
-    // จัดรูปแบบวันที่ให้เป็น yyyy-mm-dd
-    var formattedDate = Utilities.formatDate(
-        date,
-        Session.getScriptTimeZone(),
-        'yyyy-MM-dd'
-    );
-
-    sheet.appendRow([
-        formattedDate,
-        formData.name,
-        formData.department,
-        formData.startTime,
-        formData.endTime,
-        formData.task,
-        formData.notes,
-        formData.accomplishments,
-        formData.challenges,
-        formData.nextStep,
-        formData.additionalNotes,
-    ]);
 }
 
 function getReports(month, year, name) {
@@ -116,25 +131,19 @@ function getReports(month, year, name) {
                 for (var j = 1; j < data.length; j++) {
                     var row = data[j];
                     var report = {
-                        sheetName: sheetName, // เพิ่ม sheetName
-                        rowNumber: j + 1, // เพิ่ม rowNumber (ฐาน 1)
+                        sheetName: sheetName,
+                        rowNumber: j + 1,
                     };
 
                     for (var k = 0; k < headers.length; k++) {
-                        var header = headers[k];
+                        var header = headers[k].toString().trim();
                         var value = row[k];
 
-                        // แปลงเวลาให้ถูกต้อง
-                        if (
-                            (header === 'starttime' || header === 'endtime') &&
-                            typeof value === 'number'
-                        ) {
-                            var date = new Date(value * 24 * 60 * 60 * 1000);
-                            value = Utilities.formatDate(
-                                date,
-                                Session.getScriptTimeZone(),
-                                'HH:mm'
-                            );
+                        // แปลงชื่อ header ให้ตรงกัน
+                        if (header === 'Plan/Next Steps') {
+                            report['plan'] = value
+                                ? value.toString().trim()
+                                : ''; // ใช้ทั้งสองชื่อ
                         }
 
                         report[header] = value ? value.toString().trim() : '';
@@ -312,88 +321,44 @@ function getReportById(month, year, name, dateString) {
 
 function updateReport(sheetName, rowNumber, updatedData) {
     try {
-        var ss = SpreadsheetApp.getActiveSpreadsheet();
-        var sheet = ss.getSheetByName(sheetName);
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = ss.getSheetByName(sheetName);
 
-        if (!sheet) throw new Error('Sheet not found: ' + sheetName);
-        if (rowNumber > sheet.getLastRow() || rowNumber < 2) {
-            throw new Error('Invalid row number for update: ' + rowNumber);
+        if (!sheet) throw new Error(`Sheet not found: ${sheetName}`);
+        if (rowNumber < 2 || rowNumber > sheet.getLastRow()) {
+            throw new Error(`Invalid row number: ${rowNumber}`);
         }
 
-        var headers = sheet
+        const headers = sheet
             .getRange(1, 1, 1, sheet.getLastColumn())
             .getValues()[0];
-        var rowData = [];
+        const newData = headers.map((header) => {
+            header = header.toString().trim().toLowerCase();
 
-        // จัดรูปแบบวันที่ใหม่
-        var dateObj = new Date(updatedData.date);
-        var formattedDate = Utilities.formatDate(
-            dateObj,
-            Session.getScriptTimeZone(),
-            'yyyy-MM-dd'
-        );
+            if (header === 'date') return updatedData.date;
+            if (header === 'name') return updatedData.name;
+            if (header === 'department') return updatedData.department;
+            if (header === 'starttime') return updatedData.startTime || '';
+            if (header === 'endtime') return updatedData.endTime || '';
+            if (header === 'task') return updatedData.task;
+            if (header === 'notes') return updatedData.notes;
+            if (header === 'accomplishments')
+                return updatedData.accomplishments;
+            if (header === 'challenges') return updatedData.challenges;
+            if (header === 'plan/next steps') return updatedData.plan;
+            if (header === 'additionalnotes')
+                return updatedData.additionalNotes;
 
-        // อ่านค่าเดิมจากแถวที่ต้องการอัพเดท
-        var originalData = sheet
-            .getRange(rowNumber, 1, 1, headers.length)
-            .getValues()[0];
+            return ''; // Default value if header not matched
+        });
 
-        // เตรียมข้อมูลสำหรับอัพเดท
-        for (var i = 0; i < headers.length; i++) {
-            var header = headers[i].toString().toLowerCase().trim();
-            var value = originalData[i]; // เริ่มจากค่าเดิม
+        console.log('Updating with:', newData);
+        sheet.getRange(rowNumber, 1, 1, newData.length).setValues([newData]);
 
-            switch (header) {
-                case 'date':
-                    value = formattedDate;
-                    break;
-                case 'name':
-                    value = updatedData.name || value;
-                    break;
-                case 'department':
-                    value = updatedData.department || value;
-                    break;
-                case 'starttime':
-                    value =
-                        updatedData.startTime !== undefined
-                            ? updatedData.startTime
-                            : value;
-                    break;
-                case 'endtime':
-                    value =
-                        updatedData.endTime !== undefined
-                            ? updatedData.endTime
-                            : value;
-                    break;
-                case 'task':
-                    value = updatedData.task || value;
-                    break;
-                case 'notes':
-                    value = updatedData.notes || value;
-                    break;
-                case 'accomplishments':
-                    value = updatedData.accomplishments || value;
-                    break;
-                case 'challenges':
-                    value = updatedData.challenges || value;
-                    break;
-                case 'nextSteps':
-                    value = updatedData.nextSteps || value;
-                    break;
-                case 'additionalnotes':
-                    value = updatedData.additionalNotes || value;
-                    break;
-            }
-
-            rowData.push(value);
-        }
-
-        // อัพเดทเฉพาะแถวที่เลือก
-        sheet.getRange(rowNumber, 1, 1, rowData.length).setValues([rowData]);
         return true;
     } catch (e) {
-        console.error('Error in updateReport:', e);
-        throw e;
+        console.error('Update failed:', e);
+        throw new Error(`Update failed: ${e.message}`);
     }
 }
 
@@ -440,4 +405,15 @@ function getMonthName(monthIndex) {
         'December',
     ];
     return monthNames[monthIndex];
+}
+
+function logHeaders() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    sheets.forEach((sheet) => {
+        var headers = sheet
+            .getRange(1, 1, 1, sheet.getLastColumn())
+            .getValues()[0];
+        console.log(sheet.getName() + ' headers:', headers);
+    });
 }

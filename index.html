@@ -6,7 +6,10 @@
   <title>Task Log</title>
   <?!= include('styles'); ?>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
 </head>
 
 <body>
@@ -25,13 +28,13 @@
 
       <!-- New Log Tab -->
       <div id="log-tab" class="tab-content active">
-        <form id="workLogForm" class="form-grid">
+        <form id="workLogForm" class="form-grid" onsubmit="submitForm(event)">
           <!-- Basic Information Section -->
           <div class="form-group">
             <label for="date"><i class="fas fa-calendar-alt" style="margin-right: 5px;"></i>Date:</label>
             <div class="input-icon">
               <i class="fas fa-calendar-day"></i>
-              <input type="date" id="date" name="date" required placeholder="dd/mm/yyyy">
+              <input type="text" id="date" name="date" required placeholder="dd/mm/yyyy" class="datepicker">
             </div>
           </div>
 
