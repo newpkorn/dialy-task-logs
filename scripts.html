@@ -15,6 +15,18 @@
     });
   });
 
+  // เพิ่มการตั้งค่า Date Picker
+  $(function () {
+    $(".datepicker-input").datepicker({
+      dateFormat: 'dd/mm/yy',
+      changeMonth: true,
+      changeYear: true,
+      onSelect: function () {
+        loadReports();
+      }
+    });
+  });
+
   let currentReports = [];
   let currentFilters = {};
 
@@ -68,6 +80,10 @@
     try {
       if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dateInput)) {
         throw new Error('Please enter date in DD/MM/YYYY format');
+      }
+
+      if (document.getElementById("name").value == '') {
+        throw new Error('Please enter your name');
       }
 
       const formattedDate = formatDateForSheet(dateInput);
@@ -209,7 +225,10 @@
     const year = document.getElementById('report-year').value;
     const name = document.getElementById('report-name').value;
 
-    currentFilters = { month, year, name };
+    // รับค่าวันที่จากฟิลเตอร์ใหม่
+    const specificDate = document.getElementById('report-specific-date').value;
+
+    currentFilters = { specificDate, month, year, name };
 
     document.getElementById('report-results').innerHTML =
       '<p class="text-muted" style="color: var(--warning-color);">Loading reports...</p>';
@@ -224,8 +243,13 @@
           'report-results'
         ).innerHTML = `<p class="text-muted" style="color: var(--danger-color);">Error: ${error.message}</p>`;
       })
-      .getReports(month, year, name);
+      .getReports(specificDate, month, year, name);
   }
+
+  // เพิ่มตัวแปร global สำหรับจัดการ pagination
+  let currentPage = 1;
+  const recordsPerPage = 20;
+  let paginatedReports = [];
 
   function displayReports(reports) {
     const resultsDiv = document.getElementById('report-results');
@@ -235,61 +259,107 @@
       return;
     }
 
+    // เก็บรายงานทั้งหมดสำหรับ pagination
+    paginatedReports = reports;
+    currentPage = 1;
+
+    // แสดงผลรายงานพร้อม pagination
+    updateReportDisplay();
+  }
+
+  function updateReportDisplay() {
+    const resultsDiv = document.getElementById('report-results');
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    const currentReports = paginatedReports.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(paginatedReports.length / recordsPerPage);
+
     google.script.run
       .withSuccessHandler(function (spreadsheetUrl) {
         let html = `
-        <div style="overflow-x: auto;">
-          <table class="report-table">
-            <thead>
-              <tr>
-                <th style="width: 100px;">Date</th>
-                <th style="width: 120px;">Name</th>
-                <th style="width: 150px;">Department</th>
-                <th>Tasks</th>
-                <th style="width: 100px;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>`;
+              <div style="overflow-x: auto;">
+                  <table class="report-table">
+                      <thead>
+                          <tr>
+                              <th style="width: 100px;">Date</th>
+                              <th style="width: 120px;">Name</th>
+                              <th style="width: 150px;">Department</th>
+                              <th>Tasks</th>
+                              <th style="width: 100px;">Actions</th>
+                          </tr>
+                      </thead>
+                      <tbody>`;
 
-        reports.forEach((report, index) => {
+        currentReports.forEach((report, index) => {
+          const globalIndex = (currentPage - 1) * recordsPerPage + index;
           const formattedDate = formatReportDate(report.date);
           const taskText = report.task || '';
           const shortTask = taskText.length > 50 ? taskText.substring(0, 50) + '...' : taskText;
 
           html += `
-          <tr>
-            <td>${formattedDate}</td>
-            <td>${report.name || ''}</td>
-            <td>${report.department || ''}</td>
-            <td>
-              <div class="task-content" style="max-height: none;">
-                ${shortTask}
-              </div>
-              ${taskText.length > 70
+                  <tr>
+                      <td>${formattedDate}</td>
+                      <td>${report.name || ''}</td>
+                      <td>${report.department || ''}</td>
+                      <td>
+                          <div class="task-content" style="max-height: none;">
+                              ${shortTask}
+                          </div>
+                          ${taskText.length > 50
               ? '<button class="show-more-btn" onclick="toggleFullTask(this, \'' + escapeHtml(taskText) + '\')">See more</button>'
-              : ''
-            }
-            </td>
-            <td style="text-align: center;">
-              <button class="action-btn edit-btn" onclick="editReport(${index})" title="Edit">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button class="action-btn delete-btn" onclick="deleteReport(${index})" title="Delete">
-                <i class="fas fa-trash-alt"></i>
-              </button>
-            </td>
-          </tr>`;
+              : ''}
+                      </td>
+                      <td style="text-align: center;">
+                          <button class="action-btn edit-btn" onclick="editReport(${globalIndex})" title="Edit">
+                              <i class="fas fa-edit"></i>
+                          </button>
+                          <button class="action-btn delete-btn" onclick="deleteReport(${globalIndex})" title="Delete">
+                              <i class="fas fa-trash-alt"></i>
+                          </button>
+                      </td>
+                  </tr>`;
         });
 
-        html += `</tbody></table>
-          <p style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
-            Showing ${reports.length} records
-          </p>
-        </div>`;
+        html += `</tbody></table>`;
+
+        // เพิ่ม Pagination Controls
+        html += `
+              <div class="pagination-controls">
+                  <button onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>
+                      <i class="fas fa-angle-double-left"></i>
+                  </button>
+                  <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                      <i class="fas fa-angle-left"></i>
+                  </button>
+                  <span>Page ${currentPage} of ${totalPages}</span>
+                  <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                      <i class="fas fa-angle-right"></i>
+                  </button>
+                  <button onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>
+                      <i class="fas fa-angle-double-right"></i>
+                  </button>
+              </div>`;
+
+        html += `
+                  <p style="margin-top: 10px; font-size: 0.9em; color: #6c757d;">
+                      Showing ${startIndex + 1} to ${Math.min(endIndex, paginatedReports.length)} of ${paginatedReports.length} records
+                  </p>
+              </div>`;
 
         resultsDiv.innerHTML = html;
       })
       .getSpreadsheetUrl();
+  }
+
+  function goToPage(page) {
+    const totalPages = Math.ceil(paginatedReports.length / recordsPerPage);
+    if (page < 1 || page > totalPages) return;
+
+    currentPage = page;
+    updateReportDisplay();
+
+    // Scroll to top of results
+    document.getElementById('report-results').scrollIntoView({ behavior: 'smooth' });
   }
 
   function escapeHtml(text) {
@@ -307,7 +377,7 @@
       content.innerHTML = fullText;
       button.textContent = 'See less';
     } else {
-      const shortText = fullText.length > 70 ? fullText.substring(0, 70) + '...' : fullText;
+      const shortText = fullText.length > 50 ? fullText.substring(0, 50) + '...' : fullText;
       content.innerHTML = shortText;
       button.textContent = 'See more';
     }

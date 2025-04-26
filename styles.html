@@ -441,4 +441,57 @@
   .swal2-input[type="time"] {
     padding: 0 10px;
   }
+
+  .pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+    gap: 10px;
+}
+
+.pagination-controls button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.pagination-controls button:hover:not(:disabled) {
+    background: var(--primary-dark-color);
+}
+
+.pagination-controls button:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+}
+
+.pagination-controls span {
+    margin: 0 15px;
+    font-weight: bold;
+}
+
+/* ในส่วน styles.css หรือใน index.html */
+.datepicker-input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 120px;
+}
+
+.report-controls > div {
+    margin-right: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.report-controls label {
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
 </style>

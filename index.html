@@ -159,6 +159,11 @@
           <div class="report-header">
             <div class="report-controls">
               <div>
+                  <label for="report-specific-date">Date:</label>
+                  <input type="text" id="report-specific-date" class="datepicker-input" placeholder="dd/mm/yyyy" onchange="loadReports()">
+              </div>
+
+              <div>
                 <label for="report-month">Month:</label>
                 <select id="report-month" onchange="loadReports()">
                   <option value="">All Months</option>

@@ -1,7 +1,7 @@
 function doGet(e) {
     return HtmlService.createTemplateFromFile('index')
         .evaluate()
-        .setTitle('Daily Work Log')
+        .setTitle('Daily Task Log')
         .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -85,14 +85,24 @@ function saveData(formData) {
     }
 }
 
-function getReports(month, year, name) {
+function getReports(specificDate, month, year, name) {
     month = month || '';
     year = year || '';
+    specificDate = specificDate || '';
     name = name || '';
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheets = ss.getSheets();
     var allReports = [];
+
+    // แปลงวันที่ถ้ามีค่า (จากรูปแบบ dd/mm/yyyy เป็น yyyy-mm-dd)
+    var targetDate = '';
+    if (specificDate) {
+        var dateParts = specificDate.split('/');
+        if (dateParts.length === 3) {
+            targetDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+        }
+    }
 
     for (var i = 0; i < sheets.length; i++) {
         var sheet = sheets[i];
@@ -130,32 +140,49 @@ function getReports(month, year, name) {
 
                 for (var j = 1; j < data.length; j++) {
                     var row = data[j];
-                    var report = {
-                        sheetName: sheetName,
-                        rowNumber: j + 1,
-                    };
+                    var reportDate = new Date(row[0]);
+                    var reportDateStr = Utilities.formatDate(
+                        reportDate,
+                        Session.getScriptTimeZone(),
+                        'yyyy-MM-dd'
+                    );
 
-                    for (var k = 0; k < headers.length; k++) {
-                        var header = headers[k].toString().trim();
-                        var value = row[k];
-
-                        // แปลงชื่อ header ให้ตรงกัน
-                        if (header === 'Plan/Next Steps') {
-                            report['plan'] = value
-                                ? value.toString().trim()
-                                : ''; // ใช้ทั้งสองชื่อ
-                        }
-
-                        report[header] = value ? value.toString().trim() : '';
+                    // ตรวจสอบวันที่
+                    var dateMatch = true;
+                    if (targetDate && reportDateStr !== targetDate) {
+                        dateMatch = false;
                     }
 
-                    var nameMatch =
-                        name === '' ||
-                        (report.name &&
-                            report.name.toLowerCase() === name.toLowerCase());
+                    if (dateMatch) {
+                        var report = {
+                            sheetName: sheetName,
+                            rowNumber: j + 1,
+                        };
 
-                    if (nameMatch) {
-                        allReports.push(report);
+                        for (var k = 0; k < headers.length; k++) {
+                            var header = headers[k].toString().trim();
+                            var value = row[k];
+
+                            if (header === 'Plan/Next Steps') {
+                                report['plan'] = value
+                                    ? value.toString().trim()
+                                    : '';
+                            }
+
+                            report[header] = value
+                                ? value.toString().trim()
+                                : '';
+                        }
+
+                        var nameMatch =
+                            name === '' ||
+                            (report.name &&
+                                report.name.toLowerCase() ===
+                                    name.toLowerCase());
+
+                        if (nameMatch) {
+                            allReports.push(report);
+                        }
                     }
                 }
             }

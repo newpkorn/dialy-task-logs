@@ -119,6 +119,7 @@ Or
 2. **View Reports**
     - Switch to the "View Reports" tab
     - Filter by:
+        - Specific Date (DD/MM/YYYY)
         - Month
         - Year
         - Name
