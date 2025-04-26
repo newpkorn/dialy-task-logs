@@ -96,7 +96,7 @@
   select {
     width: 100%;
     padding: 12px 15px;
-    padding-left: 40px;
+    /* padding-left: 40px; */
     border: 1px solid #e1e5eb;
     border-radius: 8px;
     box-sizing: border-box;
@@ -366,7 +366,7 @@
   }
 
   input[type="time"] {
-    padding: 10px 15px;
+    /* padding: 10px 15px; */
     padding-left: 40px;
   }
 
@@ -448,9 +448,9 @@
     align-items: center;
     margin: 20px 0;
     gap: 10px;
-}
+  }
 
-.pagination-controls button {
+  .pagination-controls button {
     background: var(--primary-color);
     color: white;
     border: none;
@@ -458,40 +458,40 @@
     padding: 5px 10px;
     cursor: pointer;
     transition: background 0.3s;
-}
+  }
 
-.pagination-controls button:hover:not(:disabled) {
+  .pagination-controls button:hover:not(:disabled) {
     background: var(--primary-dark-color);
-}
+  }
 
-.pagination-controls button:disabled {
+  .pagination-controls button:disabled {
     background: #cccccc;
     cursor: not-allowed;
-}
+  }
 
-.pagination-controls span {
+  .pagination-controls span {
     margin: 0 15px;
     font-weight: bold;
-}
+  }
 
-/* ในส่วน styles.css หรือใน index.html */
-.datepicker-input {
+  /* ในส่วน styles.css หรือใน index.html */
+  .datepicker-input {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
     width: 120px;
-}
+  }
 
-.report-controls > div {
+  .report-controls>div {
     margin-right: 15px;
     display: flex;
     flex-direction: column;
-}
+  }
 
-.report-controls label {
+  .report-controls label {
     margin-bottom: 5px;
     font-weight: bold;
     font-size: 14px;
-}
+  }
 </style>
